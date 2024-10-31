@@ -7,33 +7,44 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum UserRole {
+  HAB
+  EMPLOYEE
+}
+
 model User {
   id        Int      @id @default(autoincrement())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  email String @unique
-  hash  String
-
-  firstName String?
-  lastName  String?
-
-  Bookmark Bookmark[]
+  email     String   @unique
+  hash      String
+  firstName String
+  lastName  String
+  role      UserRole @default(EMPLOYEE)
+  // Bookmark  Bookmark[]
 
   @@map("users")
 }
 
-model Bookmark {
+model Info {
   id        Int      @id @default(autoincrement())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  title        String
-  descripstion String?
-  link         String
-
-  userId Int
-  user   User @relation(fields: [userId], references: [id])
-
-  @@map("bookmark")
+  title     String
+  type      String
 }
+
+// model Bookmark {
+//   id        Int      @id @default(autoincrement())
+//   createdAt DateTime @default(now())
+//   updatedAt DateTime @updatedAt
+
+//   title        String
+//   descripstion String?
+//   link         String
+
+//   userId Int
+//   user   User @relation(fields: [userId], references: [id])
+
+//   @@map("bookmark")
+// }

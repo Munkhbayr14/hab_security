@@ -1,10 +1,12 @@
-import { ForbiddenException, HttpException, Injectable, UnauthorizedException } from '@nestjs/common';
-import { CreateAuthDto } from './dto/create-auth.dto';
+import { BadRequestException, ForbiddenException, HttpException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { CreateAuthDto } from './dto/login-user.dto';
 import { UpdateAuthDto } from './dto/update-auth.dto';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from 'src/api/prisma/prisma.service';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
+import { RegisterUserDto } from './dto/register-user.dto';
+import { UserRole } from '@prisma/client';
 
 
 @Injectable()
@@ -13,12 +15,18 @@ export class AuthService {
   hashData(data: string) {
     return bcrypt.hash(data, 10)
   }
-  async register(createAuthDto: CreateAuthDto) {
-    const hash = await this.hashData(createAuthDto.password);
+  async register(registerUserDto: RegisterUserDto) {
+    const hash = await this.hashData(registerUserDto.password);
+    if (registerUserDto.password !== registerUserDto.confirmationPassword) {
+      throw new BadRequestException('Баталгаажуулах нууц үг тохирохгүй байна.');
+    }
     try {
       const user = await this.prisma.user.create({
         data: {
-          email: createAuthDto.email,
+          email: registerUserDto.email,
+          firstName: registerUserDto.fisrtname,
+          lastName: registerUserDto.lastname,
+          role: registerUserDto.role || undefined,
           hash,
         },
       });
@@ -26,6 +34,9 @@ export class AuthService {
         message: 'success',
         userId: user.id,
         email: user.email,
+        firstname: user.firstName,
+        lastname: user.lastName,
+        role: user.role,
         statusCode: 200,
       };
     } catch (error) {
@@ -41,19 +52,24 @@ export class AuthService {
   async login(createAuthDto: CreateAuthDto) {
     const user = await this.prisma.user.findUnique({ where: { email: createAuthDto.email } });
     if (user && (await bcrypt.compare(createAuthDto.password, user.hash))) {
-      const payload = { email: user.email, sub: user.id };
+      const payload = { email: user.email, userId: user.id, username: user.firstName };
       return {
-        access_token: this.jwtService.sign(payload),
+        message: "success",
+        accessToken: this.jwtService.sign(payload),
         refreshToken: this.jwtService.sign(payload, { expiresIn: '1d' }),
         email: user.email,
-        userId: user.id
+        role: user.role,
+        userId: user.id,
+        username: user.firstName,
       };
     }
     if (!user) {
-      throw new UnauthorizedException('Хэрэглэгч бүртгэлгүй байна');
+      throw new UnauthorizedException('Хэрэглэгч бүртгэлгүй байна ');
     }
     throw new Error('Нэвтрэх үед алдаа гарлаа');
   }
+
+
 
   // create(createAuthDto: CreateAuthDto) {
   //   const findUser = fakeUsers.find(
@@ -67,8 +83,17 @@ export class AuthService {
   //   }
   // }
 
-  findAll() {
-    return `This action returns all auth`;
+  async roleCheck(userId: number) {
+    const users = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!users) {
+      throw new BadRequestException(`${userId}тай хэрэглэгч олдсонгүй`);
+    }
+    if (users.role === UserRole.HAB) {
+      return true;
+    } else {
+      return false;
+    }
+
   }
 
   findOne(id: number) {

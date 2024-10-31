@@ -1,13 +1,15 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, HttpException, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UsePipes, ValidationPipe, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { CreateAuthDto } from './dto/create-auth.dto';
+import { CreateAuthDto } from './dto/login-user.dto';
 import { UpdateAuthDto } from './dto/update-auth.dto';
 import { ApiBody, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
+import { RegisterUserDto } from './dto/register-user.dto';
 
 
 @ApiTags('Auth')
 @Controller('auth')
+
 export class AuthController {
   constructor(private readonly authService: AuthService) { }
 
@@ -17,13 +19,21 @@ export class AuthController {
     schema: {
       type: 'object',
       properties: {
+        lastname: { type: 'string' },
+        fisrtname: { type: 'string' },
         email: { type: 'string' },
         password: { type: 'string' },
+        confirmationPassword: { type: 'string' },
+        role: {
+          type: 'string',
+          enum: ['HAB', 'EMPLOYEE',],
+          example: 'EMPLOYEE || HAB',
+        },
       },
     },
   })
-  register(@Body() createAuthDto: CreateAuthDto) {
-    const user = this.authService.register(createAuthDto);
+  register(@Body() registerUserDto: RegisterUserDto) {
+    const user = this.authService.register(registerUserDto);
     return user
   }
 
@@ -38,15 +48,14 @@ export class AuthController {
     },
   })
   login(@Body() createAuthDto: CreateAuthDto) {
-    const user = this.authService.login(createAuthDto);
-    if (!user) throw new HttpException('taarsangui ', 404);
-    return user
+    return this.authService.login(createAuthDto);
+
   }
 
-  @Get()
-  findAll() {
-    return this.authService.findAll();
-  }
+  // @Get('role-check/:id')
+  // roleCheck(@Param('id') id: any) {
+  //   return this.authService.roleCheck(id);
+  // }
 
   @Get(':id')
   findOne(@Param('id') id: string) {
